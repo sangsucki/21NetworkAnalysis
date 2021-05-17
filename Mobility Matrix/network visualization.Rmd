@@ -1,0 +1,50 @@
+---
+title: "practice"
+author: "Sangseok Lee"
+date: "2/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(ggplot2) # needs to be version ≥ 2.1.0
+library(scales)
+library(sna)
+library(GGally)
+library(geomnet)
+library(ggnetwork)
+library(igraph)
+```
+
+```{r}
+a <- read.csv(file = '/Users/josephlee/registrar-recommender/03_intermediate/Mobility Matrix/a.csv')
+
+graph.df <- graph_from_data_frame(
+  d = a, 
+  directed = TRUE
+  )
+
+ggnet2(network::network(a[, 2:3], directed=TRUE), 
+       mode = "circle", size = 15, label = TRUE, 
+       arrow.size = 10, arrow.gap = 0.05, vjust = 0.5,
+       node.color = "darkred", label.color = "grey80")
+```
+
+
+
+
+```{r}
+# make data accessible
+data(a, package = "geomnet")
+
+
+# plot with ggnet2 (Figure 2a)
+set.seed(12252016)
+ggnet2(network::network(blood$edges[, 1:2], directed=TRUE), 
+       mode = "circle", size = 15, label = TRUE, 
+       arrow.size = 10, arrow.gap = 0.05, vjust = 0.5,
+       node.color = "darkred", label.color = "grey80")
+```
+

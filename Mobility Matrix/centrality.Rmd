@@ -1,0 +1,207 @@
+---
+title: "Final Project"
+author: "Vanessa Tang"
+date: "4/19/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+title: "Network Measures"
+author: "Vanessa Tang"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(igraph)
+library(ggplot2)
+# Load the data for econ sem1 to sem2 
+sem_edge1=read.csv(file="/Users/vanessatang/registrar-recommender/03_intermediate/Mobility Matrix/semester1to2_econ_node.csv")
+sem_edge1 = sem_edge1[,-1]
+sem_attr1 = read.csv(file="/Users/vanessatang/registrar-recommender/03_intermediate/Mobility Matrix/semester1to2_econ_attr.csv")
+sem_attr1 = sem_attr1[,-1]
+class_netbyedgelist=graph_from_data_frame(d=sem_edge1, directed=T,vertices=sem_attr1)
+indeg_igraph=degree(graph=class_netbyedgelist, mode="in")
+centrality=centr_degree(graph=class_netbyedgelist, mode="in", 
+                         loops=FALSE, normalized=TRUE)
+centrality
+```
+
+## Lab 9
+
+```{r}
+# Loading data, setting up df
+
+setwd("/Users/vanessatang/registrar-recommender/03_intermediate/Mobility Matrix")
+
+edge1=read.csv(file="class1to2_econ_node.csv")
+edge1 = edge1[,-1]
+head(edge1) 
+
+edge2=read.csv(file="class2to3_econ_node.csv")
+edge2 = edge2[,-1]
+head(edge1) 
+
+sem_edge1=read.csv(file="semester1to2_econ_node.csv")
+sem_edge1 = sem_edge1[,-1]
+
+sem_edge_di1=read.csv(file="semester1to2_econ_node_di.csv")
+sem_edge_di1 = sem_edge_di1[,-1]
+
+
+attr1=read.csv(file="class1to2_econ_attr.csv")
+attr2=read.csv(file="class2to3_econ_attr.csv")
+sem_attr1 = read.csv(file="semester1to2_econ_attr.csv")
+sem_attr1 = sem_attr1[,-1]
+
+attr1 = attr1[,-1]
+attr2 = attr2[,-1]
+
+head(attr1) 
+```
+
+```{r}
+library(igraph)
+
+# Create graphs from edge df
+edge_graph=graph_from_data_frame(d=edge1, directed=T,
+                                    vertices=attr1) 
+edge_graph 
+
+edge_graph2=graph_from_data_frame(d=edge2, directed=T,
+                                 vertices=attr2) 
+
+edge_graph_sem=graph_from_data_frame(d=sem_edge1, directed=T,
+                                 vertices=sem_attr1) 
+edge_graph_sem=graph_from_data_frame(d=sem_edge_di1, directed=T,
+                                     vertices=sem_attr1)
+```
+
+
+## Centrality
+
+```{r}
+g = edge_graph_sem
+
+class_netbyedgelist=graph_from_data_frame(d=sem_edge1, directed=T, vertices=sem_attr1)
+centr_degree(graph=class_netbyedgelist, mode="in", loops=FALSE, normalized=TRUE)
+```
+
+Indegree
+```{r}
+indeg=degree(graph=g, mode="in")
+data.frame(indeg)
+```
+
+Outdegree
+```{r}
+outdeg=degree(graph=g, mode="out")
+data.frame(outdeg)
+```
+
+Out closeness: mean distance of each node to all other nodes
+```{r}
+out_closeness=closeness(graph=g, mode="out", normalized=F)
+data.frame(out_closeness)
+```
+
+In closness
+```{r}
+in_closeness=closeness(graph=g, mode="in", normalized=F)
+data.frame(in_closeness)
+```
+
+Can use distance matrix to solve problem of infinite distances (isolates)
+```{r}
+dist_mat_social=distances(graph=g, mode="out") #calculating the 
+#distance matrix
+diag(dist_mat_social)=NA #ignoring the diagonal
+dist_mat_social_inverted=1/dist_mat_social #getting inverted distance matrix
+
+out_closeness2=apply(dist_mat_social_inverted, MARGIN=1, 
+                           FUN=mean, na.rm=T) 
+data.frame(out_closeness2)
+```
+
+Comparing different ways of calculating out closeness (function vs distance matrix)
+```{r}
+cor(out_closeness, out_closeness2) 
+```
+
+Another way to compute in closness using distance matrix
+```{r}
+in_closeness2=apply(dist_mat_social_inverted, MARGIN=2,
+                          FUN=mean, na.rm=T) 
+data.frame(in_closeness2)
+```
+
+Betweenness centrality: num of shortest paths going through vertex
+```{r}
+betweenness_social=betweenness(graph=g, normalized=F) 
+data.frame(betweenness_social)
+```
+
+Eigenvector centrality: greater weight to node when more connected to other highly connected nodes
+- measuring node network importance
+```{r}
+g_undirected=as.undirected(g, mode="collapse") 
+
+# eigenvector centrality
+ev_obj_social=eigen_centrality(g_undirected)
+eigen_cent=ev_obj_social$vector
+
+data.frame(eigen_cent)
+```
+
+```{r}
+ids=V(g)$name
+
+central_social=data.frame(ids=ids, net="social",
+                            indegree=indeg,
+                            outdegree=outdeg,
+                            incloseness=in_closeness, 
+                            incloseness2=in_closeness2, 
+                            outcloseness2=out_closeness2,
+                            between=betweenness_social, 
+                            eigen=eigen_cent)
+
+apply(central_social[, -c(1,2)], MARGIN=2, FUN=order, decreasing=T)
+```
+
+```{r}
+library(reshape)
+
+social_long=melt(central_social[,c("ids", "indegree", "incloseness2",
+                                   "between", "eigen")], id.vars="ids")  
+head(social_long)
+
+library(ggplot2)
+ggplot(social_long, aes(x=factor(ids, levels=1:length(ids)), y=value))+
+  geom_bar(stat="identity", position="dodge")+
+  facet_wrap(~variable, scales="free_y", ncol=2)+
+  xlab("Ids")+ylab("Centrality")+
+ theme(axis.text=element_text(size=6.5))
+```
+
+```{r}
+plot(g, vertex.size=central_social$between/5, 
+     vertex.label=V(s641_social)$name, 
+     edge.arrow.size=0.25,
+     layout=layout.fruchterman.reingold, 
+     main="Title", margin=0) 
+```
+
+### 2.2. Correlations between Centrality Measures
+
+```{r}
+cor_tab1=cor(central_social[,-c(1,2)])
+round(cor_tab1[,c("indegree", "outdegree", "incloseness2", 
+                            "outcloseness2", "between", "eigen")], 3)
+```
